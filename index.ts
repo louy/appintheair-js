@@ -6,7 +6,7 @@ export interface Options {
 /** A white-space separated list of scopes. Valid scopes are: user_email, user_info and user_flights */
 export type Scope = string;
 
-const BASE_URL = 'https://iappintheair.appspot.com/';
+const BASE_URL = 'https://iappintheair.appspot.com/api/v1';
 
 interface MakeApiCallRequest {
   method: 'GET'|'POST'|'PUT'|'DELETE',
@@ -41,6 +41,16 @@ export interface UserTrip {
   car_rentals?: CarRental[],
 }
 
+/**
+ * Usage:
+ * ```js
+ * const client_id = '';
+ * const client_secret = '';
+ * const sdk = new AppInTheAir({client_id, client_secret});
+ * const {access_token} = await sdk.getUserlessAccessToken({scope: 'user_flights'});
+ * const {flights} = await sdk.getUserProfile(access_token, user_id: '123');
+ * ```
+ */
 export default class AppInTheAir {
   readonly client_id: string;
   readonly client_secret: string;
@@ -91,24 +101,40 @@ export default class AppInTheAir {
   private makeApiCall({
     method,
     url,
+    headers,
   }: MakeApiCallRequest): PromiseLike<any> {
-    throw new Error('Not implemented');
+    return fetch(`${BASE_URL}${url}`, {
+      method,
+      headers,
+    });
   }
 
+  /**
+   * This request provides Travel history data along with `id`, `name`, `email` (if `user_email` scope is authorized) and loyalty programs (if `user_loyalty` scope is authorized).
+   *
+   * `airports`, `airlines`, `aircrafts` contains entities along with count describing how many times the user has flown with this entity
+   * `flights` contain all routes of the user
+   * `hours` and `kilometers` show the total number of distance and time traveled
+   * `last_year_hours` and `last_year_kilometers` show the number of distance and time traveled for the current year
+   */
   getMyProfile({access_token}: {access_token: string}): PromiseLike<UserProfile> {
     return this.makeApiCall({
       method: 'GET',
-      url: `/api/v1/me`,
+      url: `/me`,
       headers: {
         'Authorization': `Bearer ${access_token}`,
       },
     })
   }
 
+  /**
+   * Intended to use with server-side token.
+   * Request provides the same data as in `getMyProfile` call, but for the given user ID.
+   */
   getUserProfile({access_token, user_id}: {access_token: string, user_id: string}): PromiseLike<UserProfile> {
     return this.makeApiCall({
       method: 'GET',
-      url: `/api/v1/users/${encodeURIComponent(user_id)}`,
+      url: `/users/${encodeURIComponent(user_id)}`,
       headers: {
         'Authorization': `Bearer ${access_token}`,
       },
@@ -127,7 +153,7 @@ export default class AppInTheAir {
   }> {
     return this.makeApiCall({
       method: 'GET',
-      url: `/api/v1/me?limit=${encodeURIComponent(`${limit}`)}`,
+      url: `/me/trips?limit=${encodeURIComponent(`${limit}`)}`,
       headers: {
         'Authorization': `Bearer ${access_token}`,
       },
