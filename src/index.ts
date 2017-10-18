@@ -106,7 +106,19 @@ export default class AppInTheAir {
     return fetch(`${BASE_URL}${url}`, {
       method,
       headers,
-    });
+    })
+      .then(response => {
+        if (response.headers.get('Content-Type') === 'application/json') {
+          return response.json().then(body => ({response, body}));
+        }
+        return response.text().then(body => ({response, body}));
+      })
+      .then(({response, body}) => {
+        if (response.status >= 400) {
+          throw body;
+        }
+        return body;
+      })
   }
 
   /**

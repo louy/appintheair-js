@@ -2,14 +2,19 @@
   "name": "appintheair",
   "version": "0.0.0",
   "description": "App In The Air SDK",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "build": "tsc -p .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "author": "Louay Alakkad <louay@alakkad.me>",
   "license": "ISC",
   "devDependencies": {
+    "isomorphic-fetch": "^2.2.1",
+    "jest": "^21.2.1",
     "typescript": "^2.5.3"
+  },
+  "dependencies": {
+    "@types/jest": "^21.1.4"
   }
 }

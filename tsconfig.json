@@ -4,11 +4,10 @@
     "noImplicitAny": true,
     "preserveConstEnums": true,
     "sourceMap": true,
-    "declaration": true
+    "declaration": true,
+    "lib": ["ES2015", "DOM"]
   },
-  "files": [
-    "index.ts"
-  ],
+  "compileOnSave": true,
   "exclude": [
     "node_modules",
   ]
