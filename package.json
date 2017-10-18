@@ -4,8 +4,12 @@
   "description": "App In The Air SDK",
   "main": "index.js",
   "scripts": {
+    "build": "tsc -p .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Louay Alakkad <louay@alakkad.me>",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^2.5.3"
+  }
 }
