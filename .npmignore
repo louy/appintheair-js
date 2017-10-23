@@ -1,0 +1,12 @@
+node_modules
+coverage
+
+*.ts
+!*.d.ts
+*.log
+.DS_Store
+.travis.yml
+.nvmrc
+
+.git
+.gitignore

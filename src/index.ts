@@ -6,7 +6,7 @@ export interface Options {
 /** A white-space separated list of scopes. Valid scopes are: user_email, user_info and user_flights */
 export type Scope = string;
 
-const BASE_URL = 'https://iappintheair.appspot.com/api/v1';
+const BASE_URL = 'https://iappintheair.appspot.com';
 
 interface MakeApiCallRequest {
   method: 'GET'|'POST'|'PUT'|'DELETE',
@@ -14,32 +14,119 @@ interface MakeApiCallRequest {
   headers?: object,
 }
 
-export type Flight = any;
-export type Hotel = any;
-export type CarRental = any;
+export interface Response<T> {
+  status: number;
+  data?: T;
+  error?: any;
+}
 
 export interface UserProfile {
   id: string,
   name: string,
   /** if `user_email` scope is authorized */
   email?: string,
-  airports?: any[],
-  airlines?: any[],
-  aircrafts?: any[],
-  flights?: Flight[],
   hours?: number,
   kilometers?: number,
   last_year_hours?: number,
   last_year_kilometers?: number,
+  airports?: UserAirport[],
+  countries?: UserCountry[],
+  airlines?: UserAirline[],
+  aircraft?: UserAircraft[],
+  aircrafts?: UserAircraft[],
+  flights?: UserFlight[],
+}
+
+export interface UserAirport {
+  count: number;
+  /** two-letter country code */
+  country: string;
+  /** three-letter airport code */
+  code: string;
+  /** airport name */
+  name: string;
+  /** airport city name */
+  city: string;
+}
+
+export interface UserCountry {
+  count: number;
+  /** two-letter country code */
+  code: string;
+  /** country name */
+  name: string;
+}
+
+export interface UserFlight {
+  /** two-letter code */
+  carrier: string;
+  /** flight number */
+  number: string;
+  /** departure airport code */
+  departure_code: string;
+  /** arrival airport code */
+  arrival_code: string;
+  departure_date: number;
+  departure_utc: number;
+  arrival_utc: number;
+}
+
+export interface UserAirline {
+  count: number;
+  /** two-letter code */
+  code: string;
+  /** full name */
+  name: string;
+}
+
+export interface UserAircraft {
+  count: number;
+  code: string;
+  /** full name */
+  name: string;
 }
 
 export interface UserTrip {
-  flights: Flight[],
+  id: string;
+  flights?: UserTripFlight[];
   /** if `user_hotels` scope is authorized */
-  hotels?: Hotel[],
+  hotels?: UserTripHotel[];
   /** if `user_car_rentals` scope is authorized */
-  car_rentals?: CarRental[],
+  car_rentals?: UserTripCarRental[];
 }
+export interface UserTripFlightAirport {
+  /** two-letter code */
+  country: string;
+  country_full: string;
+  /** three-letter airport code */
+  code: string;
+  name: string;
+}
+export interface UserTripFlightCarrier {
+  icao: string;
+  iata: string;
+  name: string;
+}
+export interface UserTripFlight {
+  carrier: UserTripFlightCarrier;
+  number: string;
+  origin: UserTripFlightAirport;
+  destination: UserTripFlightAirport;
+  distance_km: number;
+  arrival_utc: number;
+  arrival_local: number;
+  departure_local: number;
+  departure_utc: number;
+}
+
+export type UserTripHotel = any;
+export type UserTripCarRental = any;
+
+function percentEncode(str: string): string {
+  return encodeURIComponent(str).replace(/[!*()']/g, (character) => {
+    return '%' + character.charCodeAt(0).toString(16);
+  });
+};
 
 /**
  * Usage:
@@ -61,16 +148,19 @@ export default class AppInTheAir {
   }
 
   getAuthUrl({scope, redirect_uri}: {scope: Scope, redirect_uri: string}): string {
-    return `${BASE_URL}/oauth/authorize?client_id=${encodeURIComponent(this.client_id)}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${encodeURIComponent(scope)}`
+    return `${BASE_URL}/oauth/authorize?client_id=${percentEncode(this.client_id)}&response_type=code&redirect_uri=${percentEncode(redirect_uri)}&scope=${percentEncode(scope)}`
   }
 
   getAccessToken({code, redirect_uri}: {code: string, redirect_uri: string}): PromiseLike<{
     access_token: string,
     refresh_token: string,
+    /** token expiry time in seconds */
+    expires_in: number,
+    token_type: string,
   }> {
     return this.makeApiCall({
       method: 'GET',
-      url: `/oauth/token?client_id=${encodeURIComponent(this.client_id)}&client_secret=${encodeURIComponent(this.client_secret)}&grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(redirect_uri)}`
+      url: `/oauth/token?client_id=${percentEncode(this.client_id)}&client_secret=${percentEncode(this.client_secret)}&grant_type=authorization_code&code=${percentEncode(code)}&redirect_uri=${percentEncode(redirect_uri)}`
     })
   }
 
@@ -80,7 +170,7 @@ export default class AppInTheAir {
   }> {
     return this.makeApiCall({
       method: 'GET',
-      url: `/oauth/token?client_id=${encodeURIComponent(this.client_id)}&client_secret=${encodeURIComponent(this.client_secret)}&grant_type=refresh_token&refresh_token=${encodeURIComponent(refresh_token)}`
+      url: `/oauth/token?client_id=${percentEncode(this.client_id)}&client_secret=${percentEncode(this.client_secret)}&grant_type=refresh_token&refresh_token=${percentEncode(refresh_token)}`
     })
   }
 
@@ -94,7 +184,7 @@ export default class AppInTheAir {
   }> {
     return this.makeApiCall({
       method: 'GET',
-      url: `/oauth/token?client_id=${encodeURIComponent(this.client_id)}&client_secret=${encodeURIComponent(this.client_secret)}&scope=${encodeURIComponent(scope)}&grant_type=client_credentials`
+      url: `/oauth/token?client_id=${percentEncode(this.client_id)}&client_secret=${percentEncode(this.client_secret)}&scope=${percentEncode(scope)}&grant_type=client_credentials`
     })
   }
 
@@ -115,7 +205,22 @@ export default class AppInTheAir {
       })
       .then(({response, body}) => {
         if (response.status >= 400) {
-          throw body;
+          let error: Error;
+          switch (true) {
+            case body.error_description != null:
+              error = new Error(body.error_description);
+              break;
+            case body.error === 'invalid_grant':
+              error = new Error('Provided code is invalid, expired, or belongs to another client')
+              break;
+            case body.error === 'invalid_client':
+              error = new Error('Provided client id or secret is invalid')
+              break;
+            default:
+              error = new Error('Unknown error occured');
+              break;
+          }
+          throw Object.assign(error, body);
         }
         return body;
       })
@@ -129,10 +234,10 @@ export default class AppInTheAir {
    * `hours` and `kilometers` show the total number of distance and time traveled
    * `last_year_hours` and `last_year_kilometers` show the number of distance and time traveled for the current year
    */
-  getMyProfile({access_token}: {access_token: string}): PromiseLike<UserProfile> {
+  getMyProfile({access_token}: {access_token: string}): PromiseLike<Response<UserProfile>> {
     return this.makeApiCall({
       method: 'GET',
-      url: `/me`,
+      url: `/api/v1/me`,
       headers: {
         'Authorization': `Bearer ${access_token}`,
       },
@@ -143,10 +248,10 @@ export default class AppInTheAir {
    * Intended to use with server-side token.
    * Request provides the same data as in `getMyProfile` call, but for the given user ID.
    */
-  getUserProfile({access_token, user_id}: {access_token: string, user_id: string}): PromiseLike<UserProfile> {
+  getUserProfile({access_token, user_id}: {access_token: string, user_id: string}): PromiseLike<Response<UserProfile>> {
     return this.makeApiCall({
       method: 'GET',
-      url: `/users/${encodeURIComponent(user_id)}`,
+      url: `/api/v1/users/${percentEncode(user_id)}`,
       headers: {
         'Authorization': `Bearer ${access_token}`,
       },
@@ -158,14 +263,14 @@ export default class AppInTheAir {
    * This request is paginated. The response contains the `next_url` to retrieve the next page of trips.
    * Note that due to implementation details the actual count of results may be less than the provided `limit` (even can be zero). You should rely on the `more` field of the response in order to determine the end of the pagination, not on the number of trips in the response.
    */
-  getMyTrips({access_token, limit}: {access_token: string, limit?: number}): PromiseLike<{
+  getMyTrips({access_token, limit, url}: {access_token: string, limit?: number, url?: string}): PromiseLike<Response<{
     trips: UserTrip[],
-    more: any,
+    more: boolean,
     next_url: string,
-  }> {
+  }>> {
     return this.makeApiCall({
       method: 'GET',
-      url: `/me/trips?limit=${encodeURIComponent(`${limit}`)}`,
+      url: url ? url.replace(BASE_URL, '') : `/api/v1/me/trips?limit=${percentEncode(`${limit}`)}`,
       headers: {
         'Authorization': `Bearer ${access_token}`,
       },

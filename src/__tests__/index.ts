@@ -19,7 +19,7 @@ describe('AppInTheAir', () => {
     const url = sdk.getAuthUrl({scope, redirect_uri});
 
 
-    expect(url).toContain('https://iappintheair.appspot.com/api/v1/oauth/authorize');
+    expect(url).toContain('https://iappintheair.appspot.com/oauth/authorize');
     expect(url).toContain('client_id=' + encodeURIComponent(client_id));
     expect(url).toContain('scope=' + encodeURIComponent(scope));
     expect(url).toContain('redirect_uri=' + encodeURIComponent(redirect_uri));
@@ -50,7 +50,7 @@ describe('AppInTheAir', () => {
 
   it('handles errors correctly in getAccessToken', async () => {
     fetchMock.mockImplementationOnce(req => {
-      return Promise.resolve(new Response(JSON.stringify({message: 'Code expired'}), {
+      return Promise.resolve(new Response(JSON.stringify({error_description: 'Code expired'}), {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -68,7 +68,7 @@ describe('AppInTheAir', () => {
       .then(() => {
         expect(false).toEqual(true);
       }, error => {
-        expect(error).toEqual({message: 'Code expired'});
+        expect(error.message).toEqual('Code expired');
       });
   });
 });
