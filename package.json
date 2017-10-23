@@ -1,6 +1,6 @@
 {
   "name": "appintheair",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "App In The Air SDK",
   "main": "src/index.js",
   "types": "src/index.d.ts",
