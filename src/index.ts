@@ -135,7 +135,7 @@ function percentEncode(str: string): string {
  * const client_secret = '';
  * const sdk = new AppInTheAir({client_id, client_secret});
  * const {access_token} = await sdk.getUserlessAccessToken({scope: 'user_flights'});
- * const {flights} = await sdk.getUserProfile(access_token, user_id: '123');
+ * const {flights} = await sdk.getUserProfile({access_token, user_id: '123'});
  * ```
  */
 export default class AppInTheAir {
